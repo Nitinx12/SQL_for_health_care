@@ -101,54 +101,17 @@ WHERE
     R.Days_To_Next_Admission <= 30
 ORDER BY
     P.Name;
-2. Calculating Departmental Patient Load Month-over-Month
-Business Question: How is patient load distributed across departments, and what is the monthly trend?
+\#\# Key SQL Concepts Covered
 
-Approach: This required another multi-step process. First, I aggregated the number of appointments by department and month. Then, I used the LAG() window function to get the previous month's appointment count, allowing me to calculate the percentage growth. This is key for resource allocation and spotting departmental workload trends.
-
-SQL
-
--- Query for Month-over-Month Growth in Departmental Appointments
-WITH MonthlyDeptAppointments AS (
-    SELECT
-        D.Department_Name,
-        DATE_TRUNC('month', A.Appointment_Date) AS Appointment_Month,
-        COUNT(A.Appointment_ID) AS Total_Appointments
-    FROM Appointments AS A
-    INNER JOIN Doctors AS Doc ON A.Doctor_ID = Doc.Doctor_ID
-    INNER JOIN Departments AS D ON Doc.Department_ID = D.Department_ID
-    GROUP BY D.Department_Name, Appointment_Month
-),
-AppointmentsWithLag AS (
-    SELECT
-        *,
-        LAG(Total_Appointments, 1, 0) OVER (PARTITION BY Department_Name ORDER BY Appointment_Month) AS Previous_Month_Appointments
-    FROM MonthlyDeptAppointments
-)
-SELECT
-    Department_Name,
-    TO_CHAR(Appointment_Month, 'YYYY-MM') AS Appointment_Month,
-    Total_Appointments,
-    ROUND(((Total_Appointments - Previous_Month_Appointments) * 100.0 / Previous_Month_Appointments), 2) AS MoM_Growth_Percentage
-FROM AppointmentsWithLag
-WHERE Previous_Month_Appointments > 0;
-Key SQL Concepts Covered
 This project provided hands-on experience with a wide array of SQL features, including:
 
-JOINS (Inner, Left, Self-Join)
+\-   \`JOINS\` (Inner, Left, Self-Join)  
+\-   Aggregate Functions (\`SUM\`, \`COUNT\`, \`AVG\`)  
+\-   Grouping & Filtering (\`GROUP BY\`, \`HAVING\`)  
+\-   Subqueries & Common Table Expressions (CTEs)  
+\-   Conditional Logic (\`CASE\` statements)  
+\-   Window Functions (\`ROW\_NUMBER\`, \`RANK\`, \`DENSE\_RANK\`, \`LAG\`, \`NTILE\`, \`FIRST\_VALUE\`)  
+\-   Date & String Manipulation  
+\-   Calculating Running Totals, Rolling Averages, and Percent-of-Total
 
-Aggregate Functions (SUM, COUNT, AVG)
-
-Grouping & Filtering (GROUP BY, HAVING)
-
-Subqueries & Common Table Expressions (CTEs)
-
-Conditional Logic (CASE statements)
-
-Window Functions (ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, NTILE)
-
-Date & String Manipulation
-
-Calculating Running Totals, Rolling Averages, and Percent-of-Total
-
-Thanks for checking out my project!
+Thanks for checking out my project\!
