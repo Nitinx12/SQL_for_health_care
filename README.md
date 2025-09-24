@@ -1,136 +1,154 @@
-### **Hospital Management System (HMS) Project: A SQL Analysis ⚕️**
+Markdown
 
-This project is a deep dive into SQL, where I tackled
+# Hospital Management System: An Advanced SQL Analysis Project
 
-**16 analytical questions** using a fictional Hospital Management System dataset1. It was a fantastic opportunity to apply a wide range of SQL techniques, from basic joins to advanced window functions, to solve real-world healthcare administration problems.
+This project is a deep dive into SQL, where I tackled 20 analytical questions using a fictional hospital's operational dataset. It was a fantastic opportunity to apply a wide range of SQL techniques, from basic joins to advanced window functions, to solve real-world healthcare administration problems.
 
----
+***
 
-### **Table of Contents**
+## Table of Contents
+- [Project Overview](#project-overview)
+- [Dataset](#dataset)
+- [Tools Used](#tools-used)
+- [Setup](#setup)
+- [Sample Analysis & Queries](#sample-analysis--queries)
+- [Key SQL Concepts Covered](#key-sql-concepts-covered)
 
-\- \[Project Overview\](\#project-overview)  
-\- \[Dataset\](\#dataset)  
-\- \[Tools Used\](\#tools-used)  
-\- \[Setup\](\#setup)  
-\- \[Sample Analysis & Queries\](\#sample-analysis--queries)  
-\- \[Key SQL Concepts Covered\](\#key-sql-concepts-covered)
+***
 
+## Project Overview
 
----
+The main goal was to practice and showcase my SQL skills by analyzing patient demographics, appointment scheduling, departmental workload, and readmission rates. The project involves loading raw CSV data into a PostgreSQL database and then running a series of queries to extract meaningful insights for hospital administration.
 
-### **Project Overview**
+***
 
-The main goal was to practice and showcase my SQL skills by analyzing patient demographics, appointment trends, doctor performance, and hospital revenue. The project involves loading raw CSV data into a PostgreSQL database and then running a series of queries to extract meaningful insights.
+## Dataset
 
----
+The dataset consists of four simple CSV files that mimic a real hospital's database:
 
-### **Dataset**
+- **`Patients.csv`**: Contains information about each patient.
+- **`Doctors.csv`**: Contains details for each doctor, including their specialty and department.
+- **`Appointments.csv`**: The transactional table linking patients to doctors for scheduled visits.
+- **`Departments.csv`**: Contains information about the various hospital departments.
 
-The dataset consists of five CSV files that mimic a real Hospital Management System's database2:
+***
 
-* **patients.csv**: Contains information about each patient.  
-* **doctors.csv**: Contains details for each doctor, including specialization and years of experience.  
-* **appointments.csv**: The transactional table linking patients to doctors and treatments.  
-* **treatments.csv**: Contains details about the treatments provided.  
-* **billing.csv**: Contains billing information, including payment method and status.
+## Tools Used
 
----
+- **Database**: PostgreSQL
+- **Language**: Python (for data loading)
+- **Libraries**: `pandas`, `psycopg2`, `SQLAlchemy`
 
-### **Tools Used**
+***
 
-* **Database**: PostgreSQL  
-* **Language**: Python (for data loading)  
-* **Libraries**: pandas, SQLAlchemy
-
----
-
-### **Setup**
+## Setup
 
 To get this project running locally:
 
-1. Make sure you have Python and PostgreSQL installed.  
-2. Install the required Python libraries: pip install pandas SQLAlchemy.  
-3. Create a new database in PostgreSQL.  
-4. Update the connection details (username, password, database name) in the load\_csv\_files.py script.  
-5. Update the base path in the load\_csv\_files.py script to the location where your CSV files are stored.  
-6. Run the script from your terminal: python load\_csv\_files.py. This will create the necessary tables and load all the data from the CSV files.
+1.  Make sure you have Python and PostgreSQL installed.
+2.  Install the required Python libraries: `pip install pandas psycopg2-binary SQLAlchemy`.
+3.  Create a new database in PostgreSQL.
+4.  Update the connection details (username, password, database name) in the `load_hms_data.py` script.
+5.  Run the script from your terminal: `python load_hms_data.py`. This will create the necessary tables and load all the data from the CSV files.
 
----
+***
 
-### **Sample Analysis & Queries**
+## Sample Analysis & Queries
 
-The
+The `hms_analysis.sql` file contains the solutions to all 20 questions. Here are a few highlights:
 
-HMS project FOR SQL.sql file contains the solutions to all 16 questions3. Here are a few highlights:
+### 1. Analyzing 30-Day Patient Readmission Rates
 
-#### **1\. Calculating the Average Days Between Patient Visits**
+-   **Business Question**: What is our 30-day readmission rate, and which patients are being readmitted?
+-   **Approach**: This complex, multi-step analysis first required finding each patient's admission dates. Then, using the `LEAD()` window function, I calculated the time gap between a patient's discharge and their next admission. Finally, I filtered this list to identify readmissions occurring within 30 days. This insight is critical for patient care quality and operational efficiency.
 
-* **Business Question**: What is the average number of days between visits for each patient? 4  
-* **Approach**: This complex, multi-step analysis first required calculating the time gap between each patient's consecutive visits using the LAG() window function. Then, I averaged these gaps to find their typical visit frequency. This insight is vital for understanding patient visit patterns.
+```sql
+-- Query to find patients readmitted within 30 days
+WITH PatientAdmissions AS (
+    SELECT
+        Patient_ID,
+        Appointment_Date,
+        LEAD(Appointment_Date, 1) OVER (
+            PARTITION BY Patient_ID ORDER BY Appointment_Date
+        ) AS Next_Admission_Date
+    FROM
+        Appointments
+    WHERE
+        -- Assuming an 'Admission' appointment type exists
+        Appointment_Type = 'Admission'
+),
+ReadmissionGaps AS (
+    SELECT
+        Patient_ID,
+        Appointment_Date,
+        Next_Admission_Date,
+        (Next_Admission_Date - Appointment_Date) AS Days_To_Next_Admission
+    FROM
+        PatientAdmissions
+    WHERE
+        Next_Admission_Date IS NOT NULL
+)
+SELECT
+    P.Name,
+    R.Appointment_Date AS Initial_Admission,
+    R.Next_Admission_Date AS Readmission,
+    R.Days_To_Next_Admission
+FROM
+    ReadmissionGaps R
+JOIN
+    Patients P ON R.Patient_ID = P.Patient_ID
+WHERE
+    R.Days_To_Next_Admission <= 30
+ORDER BY
+    P.Name;
+2. Calculating Departmental Patient Load Month-over-Month
+Business Question: How is patient load distributed across departments, and what is the monthly trend?
+
+Approach: This required another multi-step process. First, I aggregated the number of appointments by department and month. Then, I used the LAG() window function to get the previous month's appointment count, allowing me to calculate the percentage growth. This is key for resource allocation and spotting departmental workload trends.
 
 SQL
 
-\-- Query to find the average days between visits for each patient  
-WITH T1 AS(SELECT patient\_id, appointment\_date,  
-            LAG(appointment\_date, 1) OVER(PARTITION BY patient\_id ORDER BY appointment\_date) AS previous\_date  
-            FROM appointments  
-            WHERE status \= 'Completed'),
-
-T2 AS(SELECT patient\_id,  
-        appointment\_date \- previous\_date AS days\_between\_visits  
-        FROM T1  
-        WHERE previous\_date IS NOT NULL)
-
-SELECT CONCAT(P.first\_name,' ',P.last\_name) AS patient\_name,  
-FLOOR(AVG(T.days\_between\_visits)) AS avg\_days\_between\_visits  
-FROM T2 AS T  
-JOIN patients AS P ON  
-P.patient\_id \= T.patient\_id  
-GROUP BY P.patient\_id, patient\_name  
-ORDER BY 2 DESC
-
-#### **2\. Identifying Top Revenue-Generating Doctors in Each Hospital Branch**
-
-* **Business Question**: Who are the top revenue-generating doctors in each hospital branch? 5  
-* **Approach**: This required a multi-step process. First, I aggregated the total revenue generated by each doctor from paid treatments. Then, I used the DENSE\_RANK() window function, partitioned by hospital branch, to rank the doctors based on their revenue. This is key for spotting top performers and understanding which branches are most profitable.
-
-SQL
-
-\-- Query to find top revenue-generating doctors in each branch  
-WITH T1 AS(SELECT CONCAT(D.first\_name,' ',D.last\_name) AS doc\_full\_name,  
-            D.doctor\_id,  
-            D.hospital\_branch,  
-            SUM(B.amount) AS total\_revenue  
-            FROM doctors AS D  
-            INNER JOIN appointments AS A ON  
-            A.doctor\_id \= D.doctor\_id  
-            INNER JOIN treatments AS T ON  
-            A.appointment\_id \= T.appointment\_id  
-            INNER JOIN billing AS B ON  
-            T.treatment\_id \= B.treatment\_id  
-            WHERE B.payment\_status \= 'Paid'  
-            GROUP BY 1, 2, 3)
-
-SELECT hospital\_branch, doc\_full\_name, total\_revenue,  
-DENSE\_RANK() OVER(PARTITION BY hospital\_branch ORDER BY total\_revenue DESC) as RANK  
-FROM T1  
-ORDER BY 1
-
----
-
-### **Key SQL Concepts Covered**
-
+-- Query for Month-over-Month Growth in Departmental Appointments
+WITH MonthlyDeptAppointments AS (
+    SELECT
+        D.Department_Name,
+        DATE_TRUNC('month', A.Appointment_Date) AS Appointment_Month,
+        COUNT(A.Appointment_ID) AS Total_Appointments
+    FROM Appointments AS A
+    INNER JOIN Doctors AS Doc ON A.Doctor_ID = Doc.Doctor_ID
+    INNER JOIN Departments AS D ON Doc.Department_ID = D.Department_ID
+    GROUP BY D.Department_Name, Appointment_Month
+),
+AppointmentsWithLag AS (
+    SELECT
+        *,
+        LAG(Total_Appointments, 1, 0) OVER (PARTITION BY Department_Name ORDER BY Appointment_Month) AS Previous_Month_Appointments
+    FROM MonthlyDeptAppointments
+)
+SELECT
+    Department_Name,
+    TO_CHAR(Appointment_Month, 'YYYY-MM') AS Appointment_Month,
+    Total_Appointments,
+    ROUND(((Total_Appointments - Previous_Month_Appointments) * 100.0 / Previous_Month_Appointments), 2) AS MoM_Growth_Percentage
+FROM AppointmentsWithLag
+WHERE Previous_Month_Appointments > 0;
+Key SQL Concepts Covered
 This project provided hands-on experience with a wide array of SQL features, including:
 
-* JOINS (Inner, Left, Self-Join)  
-* Aggregate Functions (SUM, COUNT, AVG)  
-* Grouping & Filtering (GROUP BY, HAVING)  
-* Subqueries & Common Table Expressions (CTEs)  
-* Conditional Logic (CASE statements)  
-* Window Functions (ROW\_NUMBER, RANK, DENSE\_RANK, LAG, FIRST\_VALUE, LAST\_VALUE)  
-* Date & String Manipulation  
-* Calculating Running Totals, Rolling Averages, and Percent-of-Total  
-* Data Modification (Using update statement)
+JOINS (Inner, Left, Self-Join)
 
-Thanks for checking out my project\!
+Aggregate Functions (SUM, COUNT, AVG)
 
+Grouping & Filtering (GROUP BY, HAVING)
+
+Subqueries & Common Table Expressions (CTEs)
+
+Conditional Logic (CASE statements)
+
+Window Functions (ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, NTILE)
+
+Date & String Manipulation
+
+Calculating Running Totals, Rolling Averages, and Percent-of-Total
+
+Thanks for checking out my project!
