@@ -1,130 +1,136 @@
-# **Hospital Management System: An Advanced SQL Analysis Project**
+### **Hospital Management System (HMS) Project: A SQL Analysis ⚕️**
 
-This project is a deep dive into SQL, where I tackled 16 analytical questions using a fictional HMS dataset. It was a fantastic opportunity to apply a wide range of SQL techniques, from basic joins to advanced window functions, to solve real-world business problems.
+This project is a deep dive into SQL, where I tackled
 
----
-
-## **Table of Contents**
-
-* [Project Overview](https://www.google.com/search?q=%23project-overview&authuser=1)  
-* [Dataset](https://www.google.com/search?q=%23dataset&authuser=1)  
-* [Tools Used](https://www.google.com/search?q=%23tools-used&authuser=1)  
-* [Setup](https://www.google.com/search?q=%23setup&authuser=1)  
-* [Sample Analysis & Queries](https://www.google.com/search?q=%23sample-analysis--queries&authuser=1)  
-* [Key SQL Concepts Covered](https://www.google.com/search?q=%23key-sql-concepts-covered&authuser=1)
+**16 analytical questions** using a fictional Hospital Management System dataset1. It was a fantastic opportunity to apply a wide range of SQL techniques, from basic joins to advanced window functions, to solve real-world healthcare administration problems.
 
 ---
 
-## **Project Overview**
+### **Table of Contents**
 
-The main goal of this project was to leverage advanced SQL to extract meaningful insights from a hospital's operational data. By analyzing patient demographics, doctor performance, and financial records, I aimed to provide a comprehensive view of the hospital's health and efficiency. This project demonstrates how SQL can be a powerful tool for business intelligence, enabling a data-driven approach to management and decision-making.
+\- \[Project Overview\](\#project-overview)  
+\- \[Dataset\](\#dataset)  
+\- \[Tools Used\](\#tools-used)  
+\- \[Setup\](\#setup)  
+\- \[Sample Analysis & Queries\](\#sample-analysis--queries)  
+\- \[Key SQL Concepts Covered\](\#key-sql-concepts-covered)
 
----
-
-## **Dataset**
-
-The project utilizes a relational dataset composed of five tables that simulate a real Hospital Management System. The data is stored in simple CSV files, which are loaded into a PostgreSQL database for analysis.
-
-* **`patients`**: Contains detailed demographic information for each patient, including age and contact details.  
-* **`appointments`**: Tracks every patient appointment, recording the doctor, date, time, and visit status.  
-* **`doctors`**: Stores information on all doctors, including their specialization and years of experience.  
-* **`billing`**: Manages all financial transactions, detailing the amount, payment method, and status for each bill.  
-* **`treatments`**: Records the type and cost of every medical treatment provided to patients.
 
 ---
 
-## **Tools Used**
+### **Project Overview**
+
+The main goal was to practice and showcase my SQL skills by analyzing patient demographics, appointment trends, doctor performance, and hospital revenue. The project involves loading raw CSV data into a PostgreSQL database and then running a series of queries to extract meaningful insights.
+
+---
+
+### **Dataset**
+
+The dataset consists of five CSV files that mimic a real Hospital Management System's database2:
+
+* **patients.csv**: Contains information about each patient.  
+* **doctors.csv**: Contains details for each doctor, including specialization and years of experience.  
+* **appointments.csv**: The transactional table linking patients to doctors and treatments.  
+* **treatments.csv**: Contains details about the treatments provided.  
+* **billing.csv**: Contains billing information, including payment method and status.
+
+---
+
+### **Tools Used**
 
 * **Database**: PostgreSQL  
 * **Language**: Python (for data loading)  
-* **Libraries**: `pandas`, `psycopg2`, `SQLAlchemy`
+* **Libraries**: pandas, SQLAlchemy
 
 ---
 
-## **Setup**
+### **Setup**
 
 To get this project running locally:
 
 1. Make sure you have Python and PostgreSQL installed.  
-2. Install the required Python libraries: `pip install pandas psycopg2-binary SQLAlchemy`.  
+2. Install the required Python libraries: pip install pandas SQLAlchemy.  
 3. Create a new database in PostgreSQL.  
-4. Update the connection details (username, password, database name) in the `load_csv_files.py` script.  
-5. Run the script from your terminal: `python load_csv_files.py`. This will create the necessary tables and load all the data from the CSV files.
+4. Update the connection details (username, password, database name) in the load\_csv\_files.py script.  
+5. Update the base path in the load\_csv\_files.py script to the location where your CSV files are stored.  
+6. Run the script from your terminal: python load\_csv\_files.py. This will create the necessary tables and load all the data from the CSV files.
 
 ---
 
-## **Sample Analysis & Queries**
+### **Sample Analysis & Queries**
 
-The `HMS project FOR SQL.sql` file contains the solutions to all 16 analytical questions. Here are a few highlights that demonstrate key SQL concepts.
+The
 
-### **1\. Patient Demographics by Age Group**
+HMS project FOR SQL.sql file contains the solutions to all 16 questions3. Here are a few highlights:
 
-* **Business Question**: How many patients fall into specific age brackets, such as 20-30, 31-40, and so on?  
-* **Approach**: This query uses a **Common Table Expression (CTE)** to first calculate the precise age of each patient. Then, a **`CASE` statement** categorizes each patient into a predefined age group. Finally, an aggregation is performed to count the number of patients in each group, revealing key demographic insights.
+#### **1\. Calculating the Average Days Between Patient Visits**
 
-SQL  
-\-- Query to find the number of patients in each age group  
-WITH T1 AS(SELECT patient\_id,  
-		CONCAT(first\_name,' ',last\_name) AS patient\_full\_name,  
-		EXTRACT(YEAR FROM AGE(NOW(),date\_of\_birth)) AS age  
-		FROM patients)
+* **Business Question**: What is the average number of days between visits for each patient? 4  
+* **Approach**: This complex, multi-step analysis first required calculating the time gap between each patient's consecutive visits using the LAG() window function. Then, I averaged these gaps to find their typical visit frequency. This insight is vital for understanding patient visit patterns.
 
-SELECT COUNT(patient\_id),  
-CASE  
-WHEN age BETWEEN 20 AND 30 THEN '20-30 years'  
-WHEN age BETWEEN 31 AND 40 THEN '31-40 years'  
-WHEN age BETWEEN 41 AND 50 THEN '41-50 years'  
-WHEN age BETWEEN 51 AND 60 THEN '51-60 years'  
-ELSE '61+years'  
-END AS age\_groups  
+SQL
+
+\-- Query to find the average days between visits for each patient  
+WITH T1 AS(SELECT patient\_id, appointment\_date,  
+            LAG(appointment\_date, 1) OVER(PARTITION BY patient\_id ORDER BY appointment\_date) AS previous\_date  
+            FROM appointments  
+            WHERE status \= 'Completed'),
+
+T2 AS(SELECT patient\_id,  
+        appointment\_date \- previous\_date AS days\_between\_visits  
+        FROM T1  
+        WHERE previous\_date IS NOT NULL)
+
+SELECT CONCAT(P.first\_name,' ',P.last\_name) AS patient\_name,  
+FLOOR(AVG(T.days\_between\_visits)) AS avg\_days\_between\_visits  
+FROM T2 AS T  
+JOIN patients AS P ON  
+P.patient\_id \= T.patient\_id  
+GROUP BY P.patient\_id, patient\_name  
+ORDER BY 2 DESC
+
+#### **2\. Identifying Top Revenue-Generating Doctors in Each Hospital Branch**
+
+* **Business Question**: Who are the top revenue-generating doctors in each hospital branch? 5  
+* **Approach**: This required a multi-step process. First, I aggregated the total revenue generated by each doctor from paid treatments. Then, I used the DENSE\_RANK() window function, partitioned by hospital branch, to rank the doctors based on their revenue. This is key for spotting top performers and understanding which branches are most profitable.
+
+SQL
+
+\-- Query to find top revenue-generating doctors in each branch  
+WITH T1 AS(SELECT CONCAT(D.first\_name,' ',D.last\_name) AS doc\_full\_name,  
+            D.doctor\_id,  
+            D.hospital\_branch,  
+            SUM(B.amount) AS total\_revenue  
+            FROM doctors AS D  
+            INNER JOIN appointments AS A ON  
+            A.doctor\_id \= D.doctor\_id  
+            INNER JOIN treatments AS T ON  
+            A.appointment\_id \= T.appointment\_id  
+            INNER JOIN billing AS B ON  
+            T.treatment\_id \= B.treatment\_id  
+            WHERE B.payment\_status \= 'Paid'  
+            GROUP BY 1, 2, 3)
+
+SELECT hospital\_branch, doc\_full\_name, total\_revenue,  
+DENSE\_RANK() OVER(PARTITION BY hospital\_branch ORDER BY total\_revenue DESC) as RANK  
 FROM T1  
-GROUP BY 2  
-ORDER BY 2 ASC
-
-### **2\. Monthly Revenue Growth Percentage**
-
-* **Business Question**: What is the month-over-month growth of our paid bill revenue?  
-* **Approach**: This multi-step analysis involves two CTEs. The first CTE, `MonthlyRevenue`, calculates the total paid revenue for each month. The second CTE, `LaggedRevenue`, uses the **`LAG()` window function** to retrieve the previous month's revenue, partitioned by month. This setup allows for a straightforward calculation of the percentage growth for each month, a critical metric for financial performance.
-
-SQL  
-\-- Query for Monthly Revenue Growth Percentage  
-WITH MonthlyRevenue AS (  
-    SELECT  
-        DATE\_TRUNC('month', bill\_date) AS bill\_month,  
-        SUM(amount) AS monthly\_revenue  
-    FROM billing  
-    WHERE payment\_status \= 'Paid'  
-    GROUP BY 1  
-),  
-LaggedRevenue AS (  
-    SELECT  
-        \*,  
-        LAG(monthly\_revenue, 1, 0\) OVER (ORDER BY bill\_month) AS previous\_month  
-    FROM MonthlyRevenue  
-)  
-SELECT  
-    TO\_CHAR(bill\_month, 'YYYY-MM') AS month,  
-    monthly\_revenue,  
-    previous\_month,  
-    ROUND((monthly\_revenue \- previous\_month) \* 100.0 / previous\_month, 2\) AS mom\_growth  
-FROM LaggedRevenue  
-WHERE previous\_month \> 0;
+ORDER BY 1
 
 ---
 
-## **Key SQL Concepts Covered**
+### **Key SQL Concepts Covered**
 
 This project provided hands-on experience with a wide array of SQL features, including:
 
-* **Data Joins**: Inner, Left, and Self-Joins to combine data from multiple tables.  
-* **Aggregate Functions**: `SUM`, `COUNT`, `AVG`, `MIN`, and `MAX`.  
-* **Grouping & Filtering**: `GROUP BY` and `HAVING` to perform aggregations on specific groups.  
-* **Subqueries & CTEs**: Using `WITH` clauses for complex, multi-step queries.  
-* **Conditional Logic**: Employing `CASE` statements for data categorization.  
-* **Window Functions**:  
-  * `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`, and `NTILE()` for ranking and distribution analysis.  
-  * `LAG()` and `LEAD()` for comparing current rows with previous or next rows.  
-  * Calculating running totals and rolling averages.  
-* **Date & String Manipulation**: Functions like `DATE_TRUNC`, `EXTRACT`, and `CONCAT` for data formatting.  
-* **Data Modification**: `UPDATE` statements to modify existing data.
+* JOINS (Inner, Left, Self-Join)  
+* Aggregate Functions (SUM, COUNT, AVG)  
+* Grouping & Filtering (GROUP BY, HAVING)  
+* Subqueries & Common Table Expressions (CTEs)  
+* Conditional Logic (CASE statements)  
+* Window Functions (ROW\_NUMBER, RANK, DENSE\_RANK, LAG, FIRST\_VALUE, LAST\_VALUE)  
+* Date & String Manipulation  
+* Calculating Running Totals, Rolling Averages, and Percent-of-Total  
+* Data Modification (Using update statement)
+
+Thanks for checking out my project\!
 
